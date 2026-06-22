@@ -11,33 +11,33 @@ app.use(express.static('public'));
 let players = {};
 
 io.on('connection', (socket) => {
-    console.log(`Игрок вошел: ${socket.id}`);
+    console.log(`Игрок подключился к лобби: ${socket.id}`);
     
     players[socket.id] = {
-        x: 50,
-        y: 200,
-        loc: 'SPACE', // Стартовый мир
-        color: `hsl(${Math.random() * 360}, 85%, 60%)`
+        x: 50, y: 200, loc: 'SPACE', dir: 1, frame: 0, moving: false,
+        color: `hsl(${Math.random() * 360}, 85%, 65%)`
     };
 
-    socket.emit('currentPlayers', players);
-    socket.broadcast.emit('newPlayer', { id: socket.id, playerInfo: players[socket.id] });
+    io.emit('currentPlayers', players);
 
-    socket.on('playerMovement', (movementData) => {
+    socket.on('playerMovement', (m) => {
         if (players[socket.id]) {
-            players[socket.id].x = movementData.x;
-            players[socket.id].y = movementData.y;
-            players[socket.id].loc = movementData.loc; // Обновляем мир игрока
-            socket.broadcast.emit('playerMoved', { id: socket.id, x: players[socket.id].x, y: players[socket.id].y, loc: players[socket.id].loc });
+            players[socket.id].x = m.x; players[socket.id].y = m.y;
+            players[socket.id].loc = m.loc; players[socket.id].dir = m.dir;
+            players[socket.id].frame = m.frame; players[socket.id].moving = m.moving;
+            
+            socket.broadcast.emit('playerMoved', { 
+                id: socket.id, x: m.x, y: m.y, loc: m.loc, 
+                dir: m.dir, frame: m.frame, moving: m.moving 
+            });
         }
     });
 
     socket.on('disconnect', () => {
-        console.log(`Игрок вышел: ${socket.id}`);
         delete players[socket.id];
         io.emit('playerDisconnected', socket.id);
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Сервер активен на порту: ${PORT}`));
+server.listen(PORT, () => console.log(`Сервер лобби запущен на порту: ${PORT}`));
