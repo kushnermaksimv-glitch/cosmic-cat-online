@@ -4,26 +4,81 @@ const ctx = canvas.getContext('2d');
 
 let players = {};
 let myId = null;
-let inLobby = true; // Флаг нахождения в лобби
+let inLobby = true;
 
-// Настройки локаций
+// Настройка спрайт-листа
+const spriteSheet = new Image();
+spriteSheet.src = 'spritesheet.png'; 
+
+// Автоматическая прорисовка Pixel Art текстур внутри кода
+spriteSheet.onerror = () => {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = 128; tempCanvas.height = 64;
+    const tCtx = tempCanvas.getContext('2d');
+    const p = (x, y, color) => { tCtx.fillStyle = color; tCtx.fillRect(x * 2, y * 2, 2, 2); };
+
+    // Кадр кота 0 (Стоит)
+    tCtx.fillStyle = '#ff9f43'; tCtx.fillRect(2, 4, 12, 11);
+    tCtx.fillStyle = '#fff'; tCtx.fillRect(2, 9, 12, 1);
+    tCtx.fillStyle = '#555'; tCtx.fillRect(0, 6, 2, 6);
+    tCtx.fillStyle = '#ff9f43'; tCtx.fillRect(2, 2, 3, 2); tCtx.fillRect(11, 2, 3, 2);
+    tCtx.fillStyle = '#ffb6c1'; tCtx.fillRect(3, 3, 1, 1); tCtx.fillRect(12, 3, 1, 1);
+    tCtx.fillStyle = '#00d2d3'; tCtx.fillRect(6, 5, 8, 6);
+    tCtx.fillStyle = '#fff'; tCtx.fillRect(7, 6, 2, 2);
+    tCtx.fillStyle = '#333'; tCtx.fillRect(3, 15, 3, 1); tCtx.fillRect(10, 15, 3, 1);
+
+    // Кадр кота 1 (Шаг 1)
+    tCtx.drawImage(tempCanvas, 0, 0, 32, 30, 32, 0, 32, 30);
+    tCtx.fillStyle = '#333'; tCtx.fillRect(32 + 2, 30, 3, 1); tCtx.fillRect(32 + 11, 29, 3, 1);
+
+    // Кадр кота 2 (Шаг 2)
+    tCtx.drawImage(tempCanvas, 0, 0, 32, 30, 64, 0, 32, 30);
+    tCtx.fillStyle = '#333'; tCtx.fillRect(64 + 5, 29, 3, 1); tCtx.fillRect(64 + 8, 30, 3, 1);
+
+    // Текстура Блока Земли и Травы
+    tCtx.fillStyle = '#5c4033'; tCtx.fillRect(96, 0, 32, 32);
+    tCtx.fillStyle = '#1e824c'; tCtx.fillRect(96, 0, 32, 6);
+    tCtx.fillStyle = '#2ecc71'; tCtx.fillRect(96, 0, 32, 3);
+    p(48 + 2, 4, '#2ecc71'); p(48 + 7, 4, '#2ecc71'); p(48 + 5, 2, '#f1c40f');
+
+    // Текстура Блока Космоса (Кирпич)
+    tCtx.fillStyle = '#1c122c'; tCtx.fillRect(0, 32, 32, 32);
+    tCtx.fillStyle = '#4c336c'; tCtx.fillRect(0, 32, 32, 4);
+    tCtx.fillStyle = '#11081f'; tCtx.fillRect(0, 44, 32, 2); tCtx.fillRect(0, 56, 32, 2);
+    tCtx.fillRect(10, 32, 2, 12); tCtx.fillRect(22, 44, 2, 12);
+    tCtx.fillStyle = '#00ffcc'; tCtx.fillRect(4, 48, 4, 4);
+
+    // Текстура Неонового блока
+    tCtx.fillStyle = '#0d021f'; tCtx.fillRect(32, 32, 32, 32);
+    tCtx.fillStyle = '#b624ff'; tCtx.fillRect(32, 32, 32, 4);
+    tCtx.fillStyle = '#ffffff'; tCtx.fillRect(38, 33, 20, 2);
+    tCtx.fillStyle = '#220847'; tCtx.fillRect(36, 40, 2, 20); tCtx.fillRect(46, 40, 2, 20);
+
+    // Текстура Дерева
+    tCtx.fillStyle = '#a0522d'; tCtx.fillRect(64, 32, 32, 32);
+    tCtx.fillStyle = '#8b4513'; tCtx.fillRect(64, 38, 32, 2); tCtx.fillRect(64, 48, 32, 2);
+    tCtx.fillStyle = '#708090'; tCtx.fillRect(66, 34, 3, 3); tCtx.fillRect(91, 34, 3, 3);
+
+    spriteSheet.src = tempCanvas.toDataURL();
+};
+
 const LOCATIONS = {
     SPACE: {
         name: "COSMIC REACH 2-3", gravity: 0.35, jumpForce: -8.5, speed: 4,
-        bgGradient: ['#09001a', '#150130'], hasStars: true, hasClouds: false,
+        bgGradient: ['#09001a', '#150130'], hasStars: true,
         platforms: [
-            { x: 0, y: 380, width: 250, height: 100, type: 'space_stone' },
-            { x: 320, y: 300, width: 200, height: 25, type: 'neon_crystal' },
-            { x: 580, y: 220, width: 270, height: 260, type: 'space_stone' }
+            { x: 0, y: 380, width: 250, height: 100, spriteX: 0, spriteY: 32 },
+            { x: 320, y: 300, width: 200, height: 32, spriteX: 32, spriteY: 32 },
+            { x: 580, y: 220, width: 270, height: 260, spriteX: 0, spriteY: 32 }
         ]
     },
     EARTH: {
         name: "GREEN EARTH 1-1", gravity: 0.55, jumpForce: -11, speed: 4.5,
-        bgGradient: ['#357abd', '#8fc965'], hasStars: false, hasClouds: true,
+        bgGradient: ['#357abd', '#8fc965'], hasStars: false,
         platforms: [
-            { x: 0, y: 400, width: 300, height: 80, type: 'earth_grass' },
-            { x: 380, y: 310, width: 140, height: 30, type: 'wood' },
-            { x: 600, y: 380, width: 250, height: 100, type: 'earth_grass' }
+            { x: 0, y: 400, width: 300, height: 80, spriteX: 96, spriteY: 0 },
+            { x: 380, y: 310, width: 140, height: 32, spriteX: 64, spriteY: 32 },
+            { x: 600, y: 380, width: 250, height: 100, spriteX: 96, spriteY: 0 }
         ]
     }
 };
@@ -36,22 +91,18 @@ let localPlayer = {
     grounded: false, moving: false, direction: 1, animFrame: 0
 };
 
-// Таймер для пиксельной анимации бега
+// Расчет кадров анимации лап при беге
 setInterval(() => {
     if (localPlayer.moving && localPlayer.grounded) {
-        localPlayer.animFrame = (localPlayer.animFrame + 1) % 4; // 4 кадра анимации лапок
+        localPlayer.animFrame = localPlayer.animFrame === 1 ? 2 : 1;
     } else {
         localPlayer.animFrame = 0;
     }
-}, 100);
+}, 120);
 
-// Окружение
 const stars = [];
-for (let i = 0; i < 50; i++) stars.push({ x: Math.random() * 850, y: Math.random() * 480, size: Math.random() * 2 + 1, alpha: Math.random() });
-const clouds = [];
-for (let i = 0; i < 4; i++) clouds.push({ x: Math.random() * 850, y: Math.random() * 120, v: Math.random() * 0.15 + 0.05, w: Math.random() * 50 + 50 });
+for (let i = 0; i < 40; i++) stars.push({ x: Math.random() * 850, y: Math.random() * 480, size: Math.random() * 2 });
 
-// Управление
 const keys = { left: false, right: false, up: false };
 
 function setupInput() {
@@ -70,62 +121,34 @@ function setupInput() {
     const touch = (id, prop, dir) => {
         const el = document.getElementById(id);
         el.addEventListener('touchstart', (e) => { 
-            e.preventDefault(); if(inLobby) return; keys[prop] = true; 
-            if(dir) localPlayer.direction = dir;
+            e.preventDefault(); if(inLobby) return; keys[prop] = true; if(dir) localPlayer.direction = dir;
         });
         el.addEventListener('touchend', (e) => { e.preventDefault(); keys[prop] = false; });
     };
-    touch('btnLeft', 'left', -1);
-    touch('btnRight', 'right', 1);
-    touch('btnJump', 'up');
+    touch('btnLeft', 'left', -1); touch('btnRight', 'right', 1); touch('btnJump', 'up');
 }
 setupInput();
 
-// Лобби логика
 const startBtn = document.getElementById('startBtn');
-const playerCountText = document.getElementById('playerCount');
 const lobbyOverlay = document.getElementById('lobbyOverlay');
+const playerCountText = document.getElementById('playerCount');
 
-startBtn.addEventListener('click', () => {
-    inLobby = false;
-    lobbyOverlay.style.display = 'none';
-});
+startBtn.addEventListener('click', () => { inLobby = false; lobbyOverlay.style.display = 'none'; });
 
-// Сетевые события
-socket.on('connect', () => { 
-    myId = socket.id; 
-    startBtn.style.display = 'block';
-});
-
-socket.on('currentPlayers', (serverPlayers) => { 
-    players = serverPlayers; 
-    updateLobbyStatus();
-});
-
-socket.on('newPlayer', (data) => { 
-    players[data.id] = data.playerInfo; 
-    updateLobbyStatus();
-});
-
+socket.on('connect', () => { myId = socket.id; startBtn.style.display = 'block'; });
+socket.on('currentPlayers', (serverPlayers) => { players = serverPlayers; updateHUD(); });
+socket.on('newPlayer', (data) => { players[data.id] = data.playerInfo; updateHUD(); });
 socket.on('playerMoved', (data) => { 
     if (players[data.id]) { 
-        players[data.id].x = data.x; 
-        players[data.id].y = data.y; 
-        players[data.id].loc = data.loc;
-        players[data.id].dir = data.dir;
-        players[data.id].frame = data.frame;
-        players[data.id].moving = data.moving;
+        players[data.id].x = data.x; players[data.id].y = data.y; players[data.id].loc = data.loc;
+        players[data.id].dir = data.dir; players[data.id].frame = data.frame; players[data.id].moving = data.moving;
     } 
 });
+socket.on('playerDisconnected', (id) => { delete players[id]; updateHUD(); });
 
-socket.on('playerDisconnected', (id) => { 
-    delete players[id]; 
-    updateLobbyStatus();
-});
-
-function updateLobbyStatus() {
+function updateHUD() {
     let count = Object.keys(players).length;
-    playerCountText.innerHTML = `Игроков онлайн в сети: <b>${count}</b><br><br>Вы можете бегать вместе на разных картах!`;
+    playerCountText.innerHTML = `Игроков онлайн на сервере: <b>${count}</b><br><br>Нажми кнопку ниже для входа в мир.`;
 }
 
 function update() {
@@ -137,33 +160,20 @@ function update() {
 
     localPlayer.moving = (localPlayer.vx !== 0);
 
-    if (keys.up && localPlayer.grounded) {
-        localPlayer.vy = currentLoc.jumpForce;
-        localPlayer.grounded = false;
-    }
+    if (keys.up && localPlayer.grounded) { localPlayer.vy = currentLoc.jumpForce; localPlayer.grounded = false; }
 
     localPlayer.vy += currentLoc.gravity;
-    localPlayer.x += localPlayer.vx;
-    localPlayer.y += localPlayer.vy;
+    localPlayer.x += localPlayer.vx; localPlayer.y += localPlayer.vy;
 
-    // Коллизии платформ
     localPlayer.grounded = false;
     currentLoc.platforms.forEach(plat => {
-        if (localPlayer.x < plat.x + plat.width &&
-            localPlayer.x + localPlayer.width > plat.x &&
-            localPlayer.y + localPlayer.height >= plat.y &&
-            localPlayer.y + localPlayer.height - localPlayer.vy <= plat.y) {
-            localPlayer.vy = 0;
-            localPlayer.y = plat.y - localPlayer.height;
-            localPlayer.grounded = true;
+        if (localPlayer.x < plat.x + plat.width && localPlayer.x + localPlayer.width > plat.x &&
+            localPlayer.y + localPlayer.height >= plat.y && localPlayer.y + localPlayer.height - localPlayer.vy <= plat.y) {
+            localPlayer.vy = 0; localPlayer.y = plat.y - localPlayer.height; localPlayer.grounded = true;
         }
     });
 
-    if (currentLoc.hasClouds) {
-        clouds.forEach(c => { c.x -= c.v; if (c.x + c.w < 0) c.x = canvas.width; });
-    }
-
-    // Смена локаций
+    // Смена локации при переходе правого края экрана
     if (localPlayer.x > canvas.width - localPlayer.width) {
         currentLocKey = (currentLocKey === 'SPACE') ? 'EARTH' : 'SPACE';
         currentLoc = LOCATIONS[currentLocKey];
@@ -180,190 +190,69 @@ function update() {
     }
 }
 
-// ВЫСОКОДЕТАЛИЗИРОВАННЫЙ ПИКСЕЛЬНЫЙ РЕНДЕР ТЕКСТУР БЕЗ КАРТИНОК
-function drawPixelTexture(plat) {
-    const pSize = 4; // Размер одного "пикселя" текстуры для ретро-эффекта
-    ctx.save();
-    
-    if (plat.type === 'space_stone') {
-        // Базовый темный камень древних руин
-        ctx.fillStyle = '#1c122c'; ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
-        // Рисунок кирпичной кладки пикселями
-        ctx.fillStyle = '#2d1f42';
-        for (let y = plat.y + 8; y < plat.y + plat.height; y += 16) {
-            for (let x = plat.x; x < plat.x + plat.width; x += 32) {
-                ctx.fillRect(x + (y % 32 === 0 ? 8 : 0), y, 28, 12);
-            }
+function drawPlatformSprites(plat) {
+    for (let tx = plat.x; tx < plat.x + plat.width; tx += 32) {
+        for (let ty = plat.y; ty < plat.y + plat.height; ty += 32) {
+            let drawW = Math.min(32, plat.x + plat.width - tx);
+            let drawH = Math.min(32, plat.y + plat.height - ty);
+            ctx.drawImage(spriteSheet, plat.spriteX, plat.spriteY, drawW, drawH, tx, ty, drawW, drawH);
         }
-        // Светящиеся древние руны / мох на камнях
-        ctx.fillStyle = '#00ffcc';
-        for(let i = 20; i < plat.width - 20; i += 60) {
-            ctx.fillRect(plat.x + i, plat.y + 16, pSize, pSize * 2);
-            ctx.fillRect(plat.x + i + pSize, plat.y + 20, pSize * 2, pSize);
-        }
-        // Фиолетовая кайма верха платформы
-        ctx.fillStyle = '#4c336c'; ctx.fillRect(plat.x, plat.y, plat.width, 8);
-        ctx.fillStyle = '#7a57a3'; ctx.fillRect(plat.x, plat.y, plat.width, pSize);
-    } 
-    else if (plat.type === 'neon_crystal') {
-        // Металлическая кибер-платформа
-        ctx.fillStyle = '#0d021f'; ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
-        // Неоновая сетка подложки
-        ctx.fillStyle = '#220847';
-        for (let i = plat.x + 8; i < plat.x + plat.width; i += 16) {
-            ctx.fillRect(i, plat.y + 8, pSize, plat.height - 12);
-        }
-        // Яркая неоновая лазерная линия верха со свечением
-        ctx.shadowBlur = 12; ctx.shadowColor = '#b624ff';
-        ctx.fillStyle = '#b624ff'; ctx.fillRect(plat.x, plat.y, plat.width, pSize);
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(plat.x + 15, plat.y + 1, plat.width - 30, 2);
-        ctx.shadowBlur = 0;
     }
-    else if (plat.type === 'earth_grass') {
-        // Земляной слой
-        ctx.fillStyle = '#5c4033'; ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
-        // Тёмные вкрапления камней в почве
-        ctx.fillStyle = '#3d2b22';
-        for (let i = 12; i < plat.width; i += 32) {
-            ctx.fillRect(plat.x + i, plat.y + 24, pSize * 2, pSize);
-            ctx.fillRect(plat.x + i + pSize, plat.y + 40, pSize, pSize * 2);
-        }
-        // Пиксельный ковер сочной травы
-        ctx.fillStyle = '#1e824c'; ctx.fillRect(plat.x, plat.y, plat.width, 12);
-        ctx.fillStyle = '#2ecc71'; // Светлые пиксели травы
-        for (let i = 2; i < plat.width; i += 8) {
-            ctx.fillRect(plat.x + i, plat.y + 4, pSize, pSize * 2);
-            ctx.fillRect(plat.x + i + pSize, plat.y, pSize, pSize);
-        }
-        // Маленькие редкие желтые цветы на траве
-        ctx.fillStyle = '#f1c40f';
-        for (let i = 40; i < plat.width - 20; i += 90) ctx.fillRect(plat.x + i, plat.y - 2, pSize, pSize);
-    }
-    else if (plat.type === 'wood') {
-        // Деревянная подвесная доска
-        ctx.fillStyle = '#a0522d'; ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
-        // Кольца дерева/текстурные полосы
-        ctx.fillStyle = '#8b4513';
-        ctx.fillRect(plat.x, plat.y + 8, plat.width, pSize);
-        ctx.fillRect(plat.x, plat.y + 18, plat.width, pSize);
-        // Заклепки по бокам платформы
-        ctx.fillStyle = '#708090';
-        ctx.fillRect(plat.x + 4, plat.y + 10, pSize, pSize);
-        ctx.fillRect(plat.x + plat.width - 8, plat.y + 10, pSize, pSize);
-    }
-    
-    ctx.restore();
 }
 
-// ДЕТАЛИЗИРОВАННЫЙ КОТИК С АНИМАЦИЕЙ ЛАПОК
-function drawAnimatedCat(x, y, color, isMe, dir, frame, moving) {
+function drawPlayerSprite(x, y, dir, frame, color) {
     ctx.save();
-    // Эффект зеркального поворота кота влево/вправо
     ctx.translate(x + 16, y + 16);
     ctx.scale(dir, 1);
 
-    // 1. Космический ранец за спиной
-    ctx.fillStyle = '#555'; ctx.fillRect(-20, 2, 6, 12);
-    ctx.fillStyle = '#888'; ctx.fillRect(-20, 4, 2, 8);
-    
-    // Эффект реактивного пламени
-    if (keys.up && isMe && localPlayer.vy !== 0) {
-        ctx.fillStyle = '#ff3300'; ctx.fillRect(-26, 6, 6, 4);
-        ctx.fillStyle = '#ffcc00'; ctx.fillRect(-24, 7, 4, 2);
+    // Слой реактивного огня при зажатом прыжке
+    if (keys.up && localPlayer.vy !== 0) {
+        ctx.fillStyle = '#ff3300'; ctx.fillRect(-22, 6, 6, 4);
     }
 
-    // 2. Скафандр (тело) котика
-    ctx.fillStyle = color; ctx.fillRect(-16, -12, 28, 26);
-    
-    // Полоски скафандра (детализация)
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(-16, 2, 28, 3);
+    // Вырезаем нужный кадр котика
+    ctx.drawImage(spriteSheet, frame * 32, 0, 32, 32, -16, -16, 32, 32);
 
-    // 3. Большой шлем и иллюминатор
-    ctx.fillStyle = 'rgba(0, 210, 211, 0.85)'; ctx.fillRect(-2, -8, 12, 14);
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, -6, 3, 3); // Блик стекла
-
-    // 4. Ушки кошачьего шлема
+    // Цветовой фильтр поверх скафандра, чтобы различать игроков
+    ctx.globalCompositeOperation = 'source-atop';
     ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(-16, -12); ctx.lineTo(-12, -18); ctx.lineTo(-6, -12);
-    ctx.moveTo(4, -12); ctx.lineTo(8, -18); ctx.lineTo(12, -12);
-    ctx.fill();
-    // Розовая серединка ушей
-    ctx.fillStyle = '#ffb6c1'; ctx.fillRect(-13, -15, 2, 3); ctx.fillRect(7, -15, 2, 3);
-
-    // 5. АНИМАЦИЯ БЕГА (ЛАПКИ)
-    ctx.fillStyle = '#333'; // Цвет космических ботинок на лапах
-    if (moving && localPlayer.grounded) {
-        // Смена позиции лап в зависимости от кадра
-        if (frame === 0) {
-            ctx.fillRect(-12, 14, 5, 4);  // Передняя лапа опущена
-            ctx.fillRect(2, 14, 5, 4);   // Задняя лапа опущена
-        } else if (frame === 1) {
-            ctx.fillRect(-15, 12, 5, 4);  // Шаг вперед
-            ctx.fillRect(5, 14, 5, 4);
-        } else if (frame === 2) {
-            ctx.fillRect(-12, 14, 5, 4);
-            ctx.fillRect(2, 14, 5, 4);
-        } else if (frame === 3) {
-            ctx.fillRect(-9, 14, 5, 4);
-            ctx.fillRect(-1, 12, 5, 4);   // Задняя лапа приподнята
-        }
-    } else {
-        // Кот просто стоит или летит в прыжке
-        ctx.fillRect(-12, 14, 5, 4);
-        ctx.fillRect(2, 14, 5, 4);
-    }
-
+    ctx.globalAlpha = 0.25;
+    ctx.fillRect(-16, -16, 32, 32);
+    
     ctx.restore();
 }
 
 function draw() {
-    // Неоновый фон
     let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
     grad.addColorStop(0, currentLoc.bgGradient[0]); grad.addColorStop(1, currentLoc.bgGradient[1]);
     ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (currentLoc.hasStars) {
-        stars.forEach(s => {
-            ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
-            ctx.fillRect(s.x, s.y, s.size, s.size);
-        });
-    }
-    if (currentLoc.hasClouds) {
-        ctx.fillStyle = 'rgba(255,255,255,0.25)';
-        clouds.forEach(c => ctx.fillRect(c.x, c.y, c.w, 16));
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        stars.forEach(s => ctx.fillRect(s.x, s.y, s.size, s.size));
     }
 
-    // Рендер текстур платформ
-    currentLoc.platforms.forEach(plat => drawPixelTexture(plat));
+    currentLoc.platforms.forEach(plat => drawPlatformSprites(plat));
 
-    // Рендер игроков
     Object.keys(players).forEach(id => {
         let isMe = id === myId;
         let p = players[id];
-        let pLoc = isMe ? currentLocKey : p.loc;
+        if ((isMe ? currentLocKey : p.loc) === currentLocKey) {
+            let px = isMe ? localPlayer.x : p.x;
+            let py = isMe ? localPlayer.y : p.y;
+            let pDir = isMe ? localPlayer.direction : (p.dir || 1);
+            let pFrame = isMe ? localPlayer.animFrame : (p.frame || 0);
+            let pColor = isMe ? 'transparent' : (p.color || '#fff');
 
-        if (pLoc === currentLocKey) {
-            let x = isMe ? localPlayer.x : p.x;
-            let y = isMe ? localPlayer.y : p.y;
-            let color = isMe ? '#ff9f43' : (p.color || '#fff');
-            let dir = isMe ? localPlayer.direction : (p.dir || 1);
-            let frame = isMe ? localPlayer.animFrame : (p.frame || 0);
-            let moving = isMe ? localPlayer.moving : p.moving;
-
-            drawAnimatedCat(x, y, color, isMe, dir, frame, moving);
+            drawPlayerSprite(px, py, pDir, pFrame, pColor);
         }
     });
 
-    // Отрисовка интерфейса (HUD)
+    // Интерфейс
     ctx.fillStyle = '#fff'; ctx.font = 'bold 12px "Courier New"';
     ctx.fillText(`LOCATION: ${currentLoc.name}`, 25, 30);
-    ctx.fillText(`WORLD USERS: ${Object.keys(players).length}`, 25, 50);
+    ctx.fillText(`PLAYERS ON SERVER: ${Object.keys(players).length}`, 25, 50);
 }
 
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-}
+function loop() { update(); draw(); requestAnimationFrame(loop); }
 loop();
