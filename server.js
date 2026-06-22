@@ -6,6 +6,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// Открываем доступ к папке public для игроков
 app.use(express.static('public'));
 
 let players = {};
@@ -13,18 +14,28 @@ let players = {};
 io.on('connection', (socket) => {
     console.log(`Игрок подключился к лобби: ${socket.id}`);
     
+    // Создаем начальные параметры для нового игрока
     players[socket.id] = {
-        x: 50, y: 200, loc: 'SPACE', dir: 1, frame: 0, moving: false,
-        color: `hsl(${Math.random() * 360}, 85%, 65%)`
+        x: 50, y: 200, 
+        loc: 'SPACE', // Стартовый мир
+        dir: 1, 
+        frame: 0, 
+        moving: false,
+        color: `hsl(${Math.random() * 360}, 85%, 65%)` // Уникальный цвет скафандра
     };
 
+    // Рассылаем обновленный список игроков всем участникам
     io.emit('currentPlayers', players);
 
+    // Слушаем перемещения конкретного игрока и передаем остальным
     socket.on('playerMovement', (m) => {
         if (players[socket.id]) {
-            players[socket.id].x = m.x; players[socket.id].y = m.y;
-            players[socket.id].loc = m.loc; players[socket.id].dir = m.dir;
-            players[socket.id].frame = m.frame; players[socket.id].moving = m.moving;
+            players[socket.id].x = m.x; 
+            players[socket.id].y = m.y;
+            players[socket.id].loc = m.loc; 
+            players[socket.id].dir = m.dir;
+            players[socket.id].frame = m.frame; 
+            players[socket.id].moving = m.moving;
             
             socket.broadcast.emit('playerMoved', { 
                 id: socket.id, x: m.x, y: m.y, loc: m.loc, 
@@ -33,11 +44,14 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Обрабатываем выход из игры
     socket.on('disconnect', () => {
+        console.log(`Игрок отключился: ${socket.id}`);
         delete players[socket.id];
         io.emit('playerDisconnected', socket.id);
     });
 });
 
+// Настройка порта под хостинг Render
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Сервер лобби запущен на порту: ${PORT}`));
+server.listen(PORT, () => console.log(`Сервер игры успешно запущен на порту: ${PORT}`));
