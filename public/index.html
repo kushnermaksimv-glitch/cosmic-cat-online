@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Reach 2-3 (Online)</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #05010d;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+        }
+        #gameContainer {
+            position: relative;
+            border: 8px solid #2d1654;
+            border-radius: 10px;
+            box-shadow: 0 0 30px #7d12ff;
+        }
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #0c001f, #19013a);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="850" height="480"></canvas>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
